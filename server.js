@@ -39,7 +39,7 @@ module.exports = function (opts) {
     if (req.url === '/') {
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
       flushHeaders(res)
-      res.end(JSON.stringify({name: 'signalhub', version: require('./package').version, subscribers: subs}, null, 2) + '\n')
+      res.end(JSON.stringify({name: 'signalhub', version: require('./package').version, subscribers: subs, hello: 'world!'}, null, 2) + '\n')
       return
     }
 
