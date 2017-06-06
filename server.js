@@ -88,19 +88,13 @@ module.exports = function (opts) {
         server.emit('subscribe', channel.name)
         channel.subscribers.push(res)
         subs++
-        // var num_channel_subs = live_channels[channel.name] ? live_channels[channel.name] : 1
-        // console.log('num_channel_subs', num_channel_subs);
-        // live_channels[channel.name] = num_channel_subs++
         eos(res, function () {
           subs--
-          // live_channels[channel.name] = num_channel_subs - 1;
-          // console.log('subs / live_channels', subs, live_channels);
           var i = channel.subscribers.indexOf(res)
           if (i > -1) channel.subscribers.splice(i, 1)
           if (!channel.subscribers.length && channel === channels[channel.name]) {
             clearInterval(channel.heartbeat)
             delete channels[channel.name]
-            // delete live_channels[channel.name]
           }
         })
       })
