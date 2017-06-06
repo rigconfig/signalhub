@@ -18,6 +18,7 @@ var flushHeaders = function (res) {
 
 module.exports = function (opts) {
   var channels = {}
+  var live_channels = {}
   var maxBroadcasts = (opts && opts.maxBroadcasts) || Infinity
   var subs = 0
 
@@ -39,7 +40,7 @@ module.exports = function (opts) {
     if (req.url === '/') {
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
       flushHeaders(res)
-      res.end(JSON.stringify({name: 'signalhub', version: require('./package').version, subscribers: subs, hello: 'world!'}, null, 2) + '\n')
+      res.end(JSON.stringify({name: 'signalhub', version: require('./package').version, subscribers: subs, live_channels: getLiveChannels(channels)}, null, 2) + '\n')
       return
     }
 
@@ -56,6 +57,7 @@ module.exports = function (opts) {
         if (err) return res.end()
         if (!channels[name]) return res.end()
         var channel = get(name)
+        // console.log('channel:', channel);
 
         server.emit('publish', channel.name, data)
         data = Buffer.concat(data).toString()
@@ -77,20 +79,28 @@ module.exports = function (opts) {
       res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
 
       var app = name.split('/')[0]
+      // console.log('app', app)
       var channelNames = name.slice(app.length + 1)
+      // console.log('channelNames', channelNames)
 
       channelNames.split(',').forEach(function (channelName) {
         var channel = get(app + '/' + channelName)
         server.emit('subscribe', channel.name)
         channel.subscribers.push(res)
         subs++
+        // var num_channel_subs = live_channels[channel.name] ? live_channels[channel.name] : 1
+        // console.log('num_channel_subs', num_channel_subs);
+        // live_channels[channel.name] = num_channel_subs++
         eos(res, function () {
           subs--
+          // live_channels[channel.name] = num_channel_subs - 1;
+          // console.log('subs / live_channels', subs, live_channels);
           var i = channel.subscribers.indexOf(res)
           if (i > -1) channel.subscribers.splice(i, 1)
           if (!channel.subscribers.length && channel === channels[channel.name]) {
             clearInterval(channel.heartbeat)
             delete channels[channel.name]
+            // delete live_channels[channel.name]
           }
         })
       })
@@ -123,4 +133,15 @@ function heartbeater (sub) {
       sub.subscribers[i].write(':heartbeat signal\n\n')
     }
   }
+}
+
+function getLiveChannels(channels) {
+  var output = {}
+  for (var c in channels) {
+    if (channels.hasOwnProperty(c)) {
+      var this_channel = channels[c];
+      output[this_channel.name] = this_channel.subscribers.length
+    }
+  }
+  return output
 }
